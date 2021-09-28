@@ -39,12 +39,6 @@ const pages = [
   "xdollarfi.eth", //XDO	
 ]
 
-// 2. config it if you use a proxy
-const requestProxy = require("request").defaults({
-  proxy: "http://127.0.0.1:8118",
-  rejectUnauthorized: false,
-})
-
 // helper methods
 let synchronous_request = function (url, params) {
 
@@ -53,17 +47,15 @@ let synchronous_request = function (url, params) {
       url: url,
       form: params
     }
-    
+
     return new Promise(function (resolve, reject) {
-      // If you don't use proxy, require("request").get(...) is ok
-      // require("request").get(options, function (error, response, body) {
-      requestProxy.get(options, function (error, response, body) {
-            if (error) {
-                reject(error)
-            } else {
-                resolve(body)
-            }
-        })
+      require("request").get(options, function (error, response, body) {
+        if (error) {
+          reject(error)
+        } else {
+          resolve(body)
+        }
+      })
     })
   } else {
     let options = {
@@ -72,18 +64,18 @@ let synchronous_request = function (url, params) {
     }
 
     return new Promise(function (resolve, reject) {
-      requestProxy.post(options, function (error, response, body) {
+      require("request").get(options, function (error, response, body) {
         if (error) {
-            reject(error)
+          reject(error)
         } else {
-            resolve(body)
+          resolve(body)
         }
       })
     })
   }
 }
 
-let read_last_items = function() {
+let read_last_items = function () {
   try {
     let items = fs.readFileSync("last_items")
     return JSON.parse(items)
@@ -130,26 +122,27 @@ async function main() {
       let proposal = body.data.proposals[p]
       items.push(proposal.id)
       let now = new Date().getTime() / 1000
-      
+
       if (proposal.start <= now && proposal.end > now) {
-        
-        let mark = ""
-        if (!last_items.includes(proposal.id)) {
-          mark = "*** "
+
+        let marked = false;
+        if (last_items.includes(proposal.id)) {
+          marked = true;
         }
+        if (!marked) {
+          let start_date = new Date(proposal.start * 1000)
+          let start_str = start_date.toLocaleDateString() + ' ' + start_date.toLocaleTimeString()
+          let end_date = new Date(proposal.end * 1000)
+          let end_str = end_date.toLocaleDateString() + ' ' + end_date.toLocaleTimeString()
 
-        let start_date = new Date(proposal.start * 1000)
-        let start_str = start_date.toLocaleDateString() + ' ' + start_date.toLocaleTimeString()
-        let end_date = new Date(proposal.end * 1000)
-        let end_str = end_date.toLocaleDateString() + ' ' + end_date.toLocaleTimeString()
+          let url1 = snapshot_url.replace("page", page).replace("key", proposal.id)
 
-        let url1 = snapshot_url.replace("page", page).replace("key", proposal.id)
-
-        console.log(`\t${mark}Proposal '${proposal.title}' is ACTIVE, from ${start_str} to ${end_str},\n\t\tclick ${url1} to vote`)
+          console.log(`\tProposal '${proposal.title}' is ACTIVE, from ${start_str} to ${end_str},\n\t\tclick ${url1} to vote`)
+        }
       }
     }
   }
-  
+
   fs.writeFileSync("last_items", JSON.stringify(items))
 }
 
